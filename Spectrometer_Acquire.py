@@ -44,17 +44,21 @@ class SpectrometerApp:
         # Set up the plot
         self.wavelengths = self.spectrometer.wavelengths()
         self.fig, self.ax = plt.subplots()
-        self.line, = self.ax.plot([], [], 'k-', label="Live Spectrum", zorder=10)
+        self.line, = self.ax.plot([], [], 'k-', label="Live Spectrum", lw=0.8, zorder=10)  # Higher zorder for live spectrum
         self.ax.set_xlim(self.wavelengths[0], self.wavelengths[-1])
         self.ax.set_ylim(0, 5000)  # Adjust the range according to expected intensity values
         self.ax.grid()
         self.ax.set_xlabel("Wavelength [nm]")
         self.ax.set_ylabel("Intensity")
-        self.ax.legend(loc="upper right")
+        self.legend_visible = True  # Track legend visibility
+        self.legend = self.ax.legend(loc="upper right")  # Store the legend object
 
         # Set up the tkinter canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=root)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        # Create the menu bar
+        self.create_menu_bar()
 
         # Integration time input
         control_frame = ttk.Frame(root, padding="10 10 10 10")
@@ -123,6 +127,31 @@ class SpectrometerApp:
         self.update_thread.start()
         self.update_plot()
 
+    def create_menu_bar(self):
+        # Create a menu bar
+        menu_bar = tk.Menu(self.root)
+        self.root.config(menu=menu_bar)
+
+        # Create 'View' menu
+        view_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="View", menu=view_menu)
+
+        # Add 'Show Legend' option
+        self.show_legend_var = tk.BooleanVar(value=True)
+        view_menu.add_checkbutton(label="Show Legend", variable=self.show_legend_var, command=self.toggle_legend)
+
+    def toggle_legend(self):
+        # Show or hide the legend based on the menu option
+        self.legend_visible = self.show_legend_var.get()
+        if self.legend_visible:
+            self.legend = self.ax.legend(loc="upper right")
+        else:
+            if self.legend:
+                self.legend.remove()
+                self.legend = None
+        self.canvas.draw()
+        print(f"Legend visibility set to {self.legend_visible}")
+
     def take_background(self):
         # Puts in a request for taking a background spectrum
         self.request_background = True
@@ -141,10 +170,12 @@ class SpectrometerApp:
         # Cache the current spectrum and display it as a new line on the graph
         intensities = self.line.get_ydata()
         if intensities.size > 0:
-            reference_line, = self.ax.plot(self.wavelengths, intensities, lw=0.5,
-                                           label=f"Reference {len(self.reference_lines) + 1}")
+            reference_line, = self.ax.plot(self.wavelengths, intensities,
+                                           label=f"Reference {len(self.reference_lines) + 1}", 
+                                           lw=0.5, zorder=1)
             self.reference_lines.append(reference_line)
-            self.ax.legend(loc="upper right")
+            if self.legend_visible:
+                self.legend = self.ax.legend(loc="upper right")
             self.canvas.draw()
             print(f"Reference {len(self.reference_lines)} taken and displayed.")
         else:
@@ -155,7 +186,12 @@ class SpectrometerApp:
         for line in self.reference_lines:
             line.remove()
         self.reference_lines.clear()
-        self.ax.legend(loc="upper right")
+        if self.legend_visible:
+            self.legend = self.ax.legend(loc="upper right")
+        else:
+            if self.legend:
+                self.legend.remove()
+                self.legend = None
         self.canvas.draw()
         print("All reference lines cleared.")
 
@@ -210,7 +246,7 @@ class SpectrometerApp:
         try:
             new_time_ms = int(self.integration_time_var.get())
             if new_time_ms <= 0:
-                raise ValueError("Integration time must be greater than 0 ms.")
+                raise ValueError("Integration time must be positive")
             self.spectrometer.integration_time_micros(new_time_ms * 1000)  # Convert ms to microseconds
             print(f"Integration time set to {new_time_ms} ms")
         except ValueError as e:
