@@ -4,13 +4,14 @@ from tkinter import messagebox, filedialog
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import seabreeze.spectrometers as sb
+import avaspec_driver._avs_py as avs
 import numpy as np
 import threading
 import queue
 import time
 import h5py
 import os
-
+ 
 class SpectrometerApp:
     def __init__(self, root):
         self.root = root
@@ -19,13 +20,27 @@ class SpectrometerApp:
         # Set the custom icon for the window
         self.root.iconbitmap("spec.ico")
         
-        # Initialize spectrometer
+        # Initialize Ocean Optics spectrometer
         try:
             self.devices = sb.list_devices()
             if not self.devices:
                 raise ValueError("No Ocean Optics spectrometer found")
             self.spectrometer = sb.Spectrometer(self.devices[0])
             self.spectrometer.integration_time_micros(100000)  # Set integration time in microseconds
+            self.spec_type = "OCEAN_OPTICS"
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to initialize spectrometer: {e}")
+        
+        # Initialize Aventes spectrometer
+        try:
+            avs.AVS_Init()
+            self.devices = avs.AVS_GetList()
+            if not self.devices:   # TODO: Check if this behaves as intended
+                raise ValueError("No Avantes spectrometer found")
+            self.active_spec_handle = avs.AVS_Activate(self.devices[0])
+            avs.set_measure_params(self.active_spec_handle, 100, 1) # Set integration time in ms and averages
+            avs.AVS_Measure(self.active_spec_handle)
+            self.spec_type = "AVANTES"
         except Exception as e:
             messagebox.showerror("Error", f"Failed to initialize spectrometer: {e}")
             self.root.destroy()
@@ -42,7 +57,10 @@ class SpectrometerApp:
         self.reference_lines = []  # Store reference lines
 
         # Set up the plot
-        self.wavelengths = self.spectrometer.wavelengths()
+        if self.spec_type == "OCEAN_OPTICS":
+            self.wavelengths = self.spectrometer.wavelengths()
+        if self.spec_type == "AVANTES":
+            self.wavelengths = avs.AVS_GetLambda(self.active_spec_handle)
         self.fig, self.ax = plt.subplots()
         self.line, = self.ax.plot([], [], 'k-', label="Live Spectrum", lw=0.8, zorder=10)  # Higher zorder for live spectrum
         self.ax.set_xlim(self.wavelengths[0], self.wavelengths[-1])
@@ -224,15 +242,20 @@ class SpectrometerApp:
     def spectrum_update_loop(self):
         while self.running_event.is_set():
             try:
-                # Read spectrum
-                spectrum = self.spectrometer.spectrum()
-                wavelengths = spectrum[0]
-                intensities = spectrum[1]
+                if self.spec_type == "OCEAN_OPTICS": # Read spectrum of Ocean Optics
+                    spectrum = self.spectrometer.spectrum()
+                    wavelengths = spectrum[0]
+                    intensities = spectrum[1]
+                
+                if self.spec_type == "AVANTES": # Read spectrum of Avaspec
+                    spectrum = avs.get_spectrum(self.active_spec_handle)
+                    wavelengths = self.wavelengths
+                    intensities = spectrum[1]
 
                 # Send data to the main thread
                 self.data_queue.put((wavelengths, intensities))
 
-                time.sleep(0.1)
+                time.sleep(0.1) # TODO: Can this be faster?
             except sb.SeaBreezeError as e:
                 print(f"Spectrometer error: {e}")
                 messagebox.showerror("Spectrometer Error", f"Spectrometer error occurred: {e}")
@@ -242,7 +265,7 @@ class SpectrometerApp:
                 messagebox.showerror("Error", f"An error occurred in the spectrum update loop: {e}")
                 self.running_event.clear()
 
-    def set_integration_time(self, event):
+    def set_integration_time(self, event): # TODO: make work with avantes
         try:
             new_time_ms = int(self.integration_time_var.get())
             if new_time_ms <= 0:
@@ -289,7 +312,11 @@ class SpectrometerApp:
         try:
             self.running_event.clear()
             self.update_thread.join()
-            self.spectrometer.close()
+            if self.spec_type == "OCEAN OPTICS":
+                self.spectrometer.close()
+            if self.spec_type == "AVANTES":
+                avs.AVS_Deactivate(self.active_spec_handle)
+                avs.AVS_Done()
             print('Program closed and spectrometer disconnected.')
         except Exception as e:
             print(f"Error during close: {e}")
