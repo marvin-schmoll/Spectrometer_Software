@@ -16,7 +16,7 @@ class SpectrometerApp:
         self.root = root
         self.root.title("Live Spectrometer Feed")
         
-        # Set the custom icon
+        # Set the custom icon for the window
         self.root.iconbitmap("spec.ico")
         
         # Initialize spectrometer
@@ -39,17 +39,19 @@ class SpectrometerApp:
         # Data acquisition toggle
         self.acquiring = False
         self.acquired_spectra = []
+        self.reference_lines = []  # Store reference lines
 
         # Set up the plot
         self.wavelengths = self.spectrometer.wavelengths()
         self.fig, self.ax = plt.subplots()
-        self.line, = self.ax.plot([], [], 'k-')
+        self.line, = self.ax.plot([], [], 'k-', label="Live Spectrum", zorder=10)
         self.ax.set_xlim(self.wavelengths[0], self.wavelengths[-1])
         self.ax.set_ylim(0, 5000)  # Adjust the range according to expected intensity values
         self.ax.grid()
         self.ax.set_xlabel("Wavelength [nm]")
         self.ax.set_ylabel("Intensity")
-        
+        self.ax.legend(loc="upper right")
+
         # Set up the tkinter canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=root)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
@@ -105,6 +107,13 @@ class SpectrometerApp:
         self.autoscale_button = ttk.Button(button_frame, text="Autoscale Y-Axis", command=self.autoscale_y_axis)
         self.autoscale_button.pack(side=tk.LEFT, padx=5, pady=5)
 
+        # Add buttons for "Take Reference" and "Clear References"
+        self.reference_button = ttk.Button(button_frame, text="Take Reference", command=self.take_reference)
+        self.reference_button.pack(side=tk.LEFT, padx=5, pady=5)
+
+        self.clear_button = ttk.Button(button_frame, text="Clear References", command=self.clear_references)
+        self.clear_button.pack(side=tk.LEFT, padx=5, pady=5)
+
         # Start the update loop
         self.data_queue = queue.Queue()
         self.running_event = threading.Event()
@@ -127,6 +136,28 @@ class SpectrometerApp:
             print("Y-axis autoscaled to current spectrum values.")
         else:
             messagebox.showinfo("Autoscale", "No data available to autoscale Y-axis.")
+
+    def take_reference(self):
+        # Cache the current spectrum and display it as a new line on the graph
+        intensities = self.line.get_ydata()
+        if intensities.size > 0:
+            reference_line, = self.ax.plot(self.wavelengths, intensities, lw=0.5,
+                                           label=f"Reference {len(self.reference_lines) + 1}")
+            self.reference_lines.append(reference_line)
+            self.ax.legend(loc="upper right")
+            self.canvas.draw()
+            print(f"Reference {len(self.reference_lines)} taken and displayed.")
+        else:
+            messagebox.showinfo("Take Reference", "No data available to take as reference.")
+
+    def clear_references(self):
+        # Remove all reference lines from the graph
+        for line in self.reference_lines:
+            line.remove()
+        self.reference_lines.clear()
+        self.ax.legend(loc="upper right")
+        self.canvas.draw()
+        print("All reference lines cleared.")
 
     def update_plot(self):
         while not self.data_queue.empty():
@@ -182,12 +213,8 @@ class SpectrometerApp:
                 raise ValueError("Integration time must be greater than 0 ms.")
             self.spectrometer.integration_time_micros(new_time_ms * 1000)  # Convert ms to microseconds
             print(f"Integration time set to {new_time_ms} ms")
-        except ValueError as ve:
-            print("Invalid integration time value")
-            messagebox.showerror("Invalid Input", f"Please enter a valid integration time: {ve}")
-        except Exception as e:
-            print(f"Error setting integration time: {e}")
-            messagebox.showerror("Error", f"Failed to set integration time: {e}")
+        except ValueError as e:
+            messagebox.showerror("Invalid Value", f"Invalid integration time value: {e}")
 
     def toggle_acquisition(self):
         if self.acquiring:
@@ -204,14 +231,16 @@ class SpectrometerApp:
     def save_spectra(self):
         # Save the acquired spectra to an HDF5 file
         file_path = self.filepath_var.get()
+        if not file_path:
+            messagebox.showerror("Save Error", "File path is empty. Please provide a valid file path.")
+            return
         try:
             with h5py.File(file_path, "w") as f:
                 f.create_dataset("wavelengths", data=self.wavelengths)
                 f.create_dataset("spectra", data=np.array(self.acquired_spectra))
             print(f"Data saved to {file_path}")
         except Exception as e:
-            print(f"Error saving spectra: {e}")
-            messagebox.showerror("Save Error", f"Failed to save spectra: {e}")
+            messagebox.showerror("Save Error", f"Failed to save data: {e}")
 
     def browse_file(self):
         # Open a file dialog to select a file path
