@@ -70,11 +70,13 @@ class SpectrometerApp:
         self.legend = self.ax.legend(loc="upper left")  # Store the legend object
 
         # Set up the tkinter canvas
-        self.canvas = FigureCanvasTkAgg(self.fig, master=root)
+        plot_frame = ttk.Frame(root, padding="0 0 0 0")
+        plot_frame.pack(side=tk.TOP, fill=tk.X)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         
         # Add the toolbar for zooming/panning
-        self.toolbar = NavigationToolbar2Tk(self.canvas, root)
+        self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
         self.toolbar.pack(side=tk.TOP, fill=tk.X)
         self.toolbar.update()
 
