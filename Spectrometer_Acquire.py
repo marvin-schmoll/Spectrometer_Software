@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox, filedialog
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import matplotlib.pyplot as plt
 import seabreeze.spectrometers as sb
 import avaspec_driver._avs_py as avs
@@ -72,6 +72,11 @@ class SpectrometerApp:
         # Set up the tkinter canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=root)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        
+        # Add the toolbar for zooming/panning
+        self.toolbar = NavigationToolbar2Tk(self.canvas, root)
+        self.toolbar.pack(side=tk.TOP, fill=tk.X)
+        self.toolbar.update()
 
         # Create the menu bar
         self.create_menu_bar()
@@ -155,6 +160,10 @@ class SpectrometerApp:
         # Add 'Show Legend' option
         self.show_legend_var = tk.BooleanVar(value=True)
         view_menu.add_checkbutton(label="Show Legend", variable=self.show_legend_var, command=self.toggle_legend)
+        
+        # Add 'Show Toolbar' option
+        self.show_toolbar_var = tk.BooleanVar(value=True)  # Toolbar visible by default
+        view_menu.add_checkbutton(label="Show Toolbar", variable=self.show_toolbar_var, command=self.toggle_toolbar)
 
     def toggle_legend(self):
         # Show or hide the legend based on the menu option
@@ -167,6 +176,16 @@ class SpectrometerApp:
                 self.legend = None
         self.canvas.draw()
         print(f"Legend visibility set to {self.legend_visible}")
+    
+    def toggle_toolbar(self):
+        if self.show_toolbar_var.get():
+            # Show the toolbar
+            self.toolbar.pack(side=tk.TOP, fill=tk.X)
+            self.toolbar.update()
+        else:
+            # Hide the toolbar
+            self.toolbar.pack_forget()
+        print(f"Toolbar visibility set to {self.show_toolbar_var.get()}")
 
     def take_background(self):
         # Puts in a request for taking a background spectrum
