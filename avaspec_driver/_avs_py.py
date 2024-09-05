@@ -95,7 +95,7 @@ def AVS_Init(port = 'USB'):
     
     Parameters
     ----------
-    port : str
+    port: str
         Define where to look for spectrometers: "USB", "Ethernet", or "both"
 
     Returns
@@ -115,7 +115,7 @@ def AVS_Init(port = 'USB'):
     if ret > 0:
         return ret
     elif ret == 0:
-        raise RuntimeError('No spectrometers found.')
+        raise RuntimeError('No Avantes spectrometer found.')
     else:
         AVS_Status(ret)
 
@@ -235,7 +235,7 @@ def AVS_GetParameter(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
@@ -271,7 +271,7 @@ def AVS_GetLambda(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
@@ -293,9 +293,9 @@ def AVS_PrepareMeasure(handle, config=None):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
-    config : MeasConfigType, optional
+    config: MeasConfigType, optional
         Measurement Configuration. 
         Defaults to MeasConfig_DefaultValues.
 
@@ -320,13 +320,13 @@ def AVS_Measure(handle, nummeas=-1, windowhandle=0):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
-    nummeas : int
+    nummeas: int
             number of measurements to do. 
             -1 is infinite, -2 is used to start Dynamic StoreToRam.
             Default is continuos acquisition.
-    windowhandle : TYPE
+    windowhandle
         Window handle to notify application measurement result
         data is available. The library sends a Windows message to the window with 
         command WM_MEAS_READY, with SUCCESS, the number of scans that were saved in
@@ -352,7 +352,7 @@ def AVS_StopMeasure(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
@@ -373,12 +373,12 @@ def AVS_PollScan(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
     -------
-    ret : bool
+    bool
         0 = no data available or 1 = data available
 
     '''      
@@ -395,7 +395,7 @@ def AVS_GetScopeData(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
@@ -421,7 +421,7 @@ def AVS_GetSaturatedPixels(handle):
     
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
 
     Returns
@@ -447,16 +447,16 @@ def set_measure_params(handle, time, avg=1, start_px=None, stop_px=None):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         AvsHandle of the spectrometer.
-    time : float
+    time: float
         Integration time of the spectrometer in ms.
-    avg : int, optional
+    avg: int, optional
         Number of spectra to be averaged. The default is 1.
-    start_px : int, optional
+    start_px: int, optional
         First pixel to be read from the acquired trace. 
         The default is 0, i.e. the first pixel.
-    stop_px : int, optional
+    stop_px: int, optional
         Last pixel to be read from the acquired trace. 
         The default is reading until the last pixel.
 
@@ -506,15 +506,15 @@ def get_spectrum(handle):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         AvsHandle of the spectrometer.
 
     Returns
     -------
-    timestamp : float
+    timestamp: float
         Time in seconds at which last pixel of spectrum is received by 
         microcontroller.
-    spectrum : np.array
+    spectrum: np.array
         Pixel values of the spectrometer.
 
     '''
@@ -536,18 +536,18 @@ def acquire_single_spectrum(handle, config=None):
 
     Parameters
     ----------
-    handle : int
+    handle: int
         the AvsHandle of the spectrometer
-    config : MeasConfigType, optional
+    config: MeasConfigType, optional
         Measurement Configuration. 
         Defaults to MeasConfig_DefaultValues.
 
     Returns
     -------
-    timestamp : float
+    timestamp: float
         Time in seconds at which last pixel of spectrum is received by 
         microcontroller.
-    spectrum : np.array
+    spectrum: np.array
         Pixel values of the spectrometer.
 
     '''

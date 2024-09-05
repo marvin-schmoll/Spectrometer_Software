@@ -24,7 +24,7 @@ class SpectrometerApp:
         try:
             self.devices = sb.list_devices()
             if not self.devices:
-                raise ValueError("No Ocean Optics spectrometer found")
+                raise ValueError("No Ocean Optics spectrometer found.")
             self.spectrometer = sb.Spectrometer(self.devices[0])
             self.spectrometer.integration_time_micros(100000)  # Set integration time in microseconds
             self.spec_type = "OCEAN_OPTICS"
@@ -35,8 +35,6 @@ class SpectrometerApp:
         try:
             avs.AVS_Init()
             self.devices = avs.AVS_GetList()
-            if not self.devices:   # TODO: Check if this behaves as intended
-                raise ValueError("No Avantes spectrometer found")
             self.active_spec_handle = avs.AVS_Activate(self.devices[0])
             avs.set_measure_params(self.active_spec_handle, 100, 1) # Set integration time in ms and averages
             avs.AVS_Measure(self.active_spec_handle)
@@ -69,7 +67,7 @@ class SpectrometerApp:
         self.ax.set_xlabel("Wavelength [nm]")
         self.ax.set_ylabel("Intensity")
         self.legend_visible = True  # Track legend visibility
-        self.legend = self.ax.legend(loc="upper right")  # Store the legend object
+        self.legend = self.ax.legend(loc="upper left")  # Store the legend object
 
         # Set up the tkinter canvas
         self.canvas = FigureCanvasTkAgg(self.fig, master=root)
@@ -162,7 +160,7 @@ class SpectrometerApp:
         # Show or hide the legend based on the menu option
         self.legend_visible = self.show_legend_var.get()
         if self.legend_visible:
-            self.legend = self.ax.legend(loc="upper right")
+            self.legend = self.ax.legend(loc="upper left")
         else:
             if self.legend:
                 self.legend.remove()
@@ -265,12 +263,17 @@ class SpectrometerApp:
                 messagebox.showerror("Error", f"An error occurred in the spectrum update loop: {e}")
                 self.running_event.clear()
 
-    def set_integration_time(self, event): # TODO: make work with avantes
+    def set_integration_time(self, event):
         try:
             new_time_ms = int(self.integration_time_var.get())
             if new_time_ms <= 0:
                 raise ValueError("Integration time must be positive")
-            self.spectrometer.integration_time_micros(new_time_ms * 1000)  # Convert ms to microseconds
+            if self.spec_type == "OCEAN_OPTICS":
+                self.spectrometer.integration_time_micros(new_time_ms * 1000)  # Convert ms to microseconds
+            if self.spec_type == "AVANTES":
+                avs.AVS_StopMeasure(self.active_spec_handle)
+                avs.set_measure_params(self.active_spec_handle, new_time_ms, 1)
+                avs.AVS_Measure(self.active_spec_handle)
             print(f"Integration time set to {new_time_ms} ms")
         except ValueError as e:
             messagebox.showerror("Invalid Value", f"Invalid integration time value: {e}")
