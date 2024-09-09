@@ -29,20 +29,20 @@ class SpectrometerApp:
             self.spectrometer.integration_time_micros(100000)  # Set integration time in microseconds
             self.spec_type = "OCEAN_OPTICS"
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to initialize spectrometer: {e}")
+            messagebox.showinfo("Spectrometer interface", f"Failed to initialize spectrometer: {e}")
         
-        # Initialize Aventes spectrometer
-        try:
-            avs.AVS_Init()
-            self.devices = avs.AVS_GetList()
-            self.active_spec_handle = avs.AVS_Activate(self.devices[0])
-            avs.set_measure_params(self.active_spec_handle, 100, 1) # Set integration time in ms and averages
-            avs.AVS_Measure(self.active_spec_handle)
-            self.spec_type = "AVANTES"
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to initialize spectrometer: {e}")
-            self.root.destroy()
-            return
+            # Initialize Aventes spectrometer
+            try:
+                avs.AVS_Init()
+                self.devices = avs.AVS_GetList()
+                self.active_spec_handle = avs.AVS_Activate(self.devices[0])
+                avs.set_measure_params(self.active_spec_handle, 100, 1) # Set integration time in ms and averages
+                avs.AVS_Measure(self.active_spec_handle)
+                self.spec_type = "AVANTES"
+            except Exception as e:
+                messagebox.showinfo("Sepectrometer interface", f"Failed to initialize spectrometer: {e}")
+                self.root.destroy()
+                return
 
         # Background spectrum and subtraction toggle
         self.request_background = False
@@ -71,7 +71,7 @@ class SpectrometerApp:
 
         # Set up the tkinter canvas
         plot_frame = ttk.Frame(root, padding="0 0 0 0")
-        plot_frame.pack(side=tk.TOP, fill=tk.X)
+        plot_frame.pack(side=tk.TOP, fill=tk.BOTH)
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
         
