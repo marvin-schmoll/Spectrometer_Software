@@ -28,9 +28,8 @@ class SpectrometerApp:
             self.spectrometer = sb.Spectrometer(self.devices[0])
             self.spectrometer.integration_time_micros(100000)  # Set integration time in microseconds
             self.spec_type = "OCEAN_OPTICS"
-        except Exception as e:
-            messagebox.showinfo("Spectrometer interface", f"Failed to initialize spectrometer: {e}")
-        
+            
+        except Exception:
             # Initialize Aventes spectrometer
             try:
                 avs.AVS_Init()
@@ -39,10 +38,15 @@ class SpectrometerApp:
                 avs.set_measure_params(self.active_spec_handle, 100, 1) # Set integration time in ms and averages
                 avs.AVS_Measure(self.active_spec_handle)
                 self.spec_type = "AVANTES"
-            except Exception as e:
-                messagebox.showinfo("Sepectrometer interface", f"Failed to initialize spectrometer: {e}")
-                self.root.destroy()
-                return
+                
+            except Exception:
+                q_string = "No Ocean Optics or Avantes spectrometers could be detected.\nProceed in Demo mode?"
+                answer = messagebox.askquestion(title="No spectrometer found", message=q_string)
+                if answer == "yes":
+                    self.spec_type = "DEMO"
+                else:
+                    self.root.destroy()
+                    return
 
         # Background spectrum and subtraction toggle
         self.request_background = False
@@ -59,6 +63,8 @@ class SpectrometerApp:
             self.wavelengths = self.spectrometer.wavelengths()
         if self.spec_type == "AVANTES":
             self.wavelengths = avs.AVS_GetLambda(self.active_spec_handle)
+        if self.spec_type == "DEMO":
+            self.wavelengths = np.arange(1000)
         self.fig, self.ax = plt.subplots()
         self.line, = self.ax.plot([], [], 'k-', label="Live Spectrum", lw=0.8, zorder=10)  # Higher zorder for live spectrum
         self.ax.set_xlim(self.wavelengths[0], self.wavelengths[-1])
@@ -71,13 +77,13 @@ class SpectrometerApp:
 
         # Set up the tkinter canvas
         plot_frame = ttk.Frame(root, padding="0 0 0 0")
-        plot_frame.pack(side=tk.TOP, fill=tk.BOTH)
+        plot_frame.pack(fill=tk.BOTH, expand=True)
         self.canvas = FigureCanvasTkAgg(self.fig, master=plot_frame)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
         
         # Add the toolbar for zooming/panning
         self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
-        self.toolbar.pack(side=tk.TOP, fill=tk.X)
+        self.toolbar.pack(fill=tk.X)
         self.toolbar.update()
 
         # Create the menu bar
@@ -85,10 +91,10 @@ class SpectrometerApp:
 
         # Integration time input
         control_frame = ttk.Frame(root, padding="10 10 10 10")
-        control_frame.pack(side=tk.TOP, fill=tk.X)
+        control_frame.pack(fill=tk.X)
 
         integration_frame = ttk.Frame(control_frame)
-        integration_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+        integration_frame.pack(fill=tk.X, pady=5)
         
         self.integration_label = ttk.Label(integration_frame, text="Integration Time (ms):")
         self.integration_label.pack(side=tk.LEFT, padx=5)
@@ -100,7 +106,7 @@ class SpectrometerApp:
 
         # Filepath entry and acquisition controls
         filepath_frame = ttk.Frame(control_frame)
-        filepath_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+        filepath_frame.pack(fill=tk.X, pady=5)
         
         self.filepath_label = ttk.Label(filepath_frame, text="Save Filepath:")
         self.filepath_label.pack(side=tk.LEFT, padx=5)
@@ -113,7 +119,7 @@ class SpectrometerApp:
         self.browse_button.pack(side=tk.LEFT, padx=5)
         
         acquisition_frame = ttk.Frame(control_frame)
-        acquisition_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+        acquisition_frame.pack(fill=tk.X, pady=5)
         
         self.acquire_button = ttk.Button(acquisition_frame, text="Start acquire", command=self.toggle_acquisition)
         self.acquire_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -123,7 +129,7 @@ class SpectrometerApp:
 
         # Buttons for various controls
         button_frame = ttk.Frame(control_frame)
-        button_frame.pack(side=tk.TOP, fill=tk.X, pady=5)
+        button_frame.pack(fill=tk.X, pady=5)
         
         self.bg_button = ttk.Button(button_frame, text="Take Background Spectrum", command=self.take_background)
         self.bg_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -166,6 +172,13 @@ class SpectrometerApp:
         # Add 'Show Toolbar' option
         self.show_toolbar_var = tk.BooleanVar(value=True)  # Toolbar visible by default
         view_menu.add_checkbutton(label="Show Toolbar", variable=self.show_toolbar_var, command=self.toggle_toolbar)
+        
+        # Create 'Tools' menu
+        tools_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="Tools", menu=tools_menu)
+        
+        # Add 'FROG interface' option
+        tools_menu.add_command(label="Switch to FROG interface", command=self.frog_interface)
 
     def toggle_legend(self):
         # Show or hide the legend based on the menu option
@@ -182,7 +195,7 @@ class SpectrometerApp:
     def toggle_toolbar(self):
         if self.show_toolbar_var.get():
             # Show the toolbar
-            self.toolbar.pack(side=tk.TOP, fill=tk.X)
+            self.toolbar.pack(fill=tk.X)
             self.toolbar.update()
         else:
             # Hide the toolbar
@@ -270,6 +283,10 @@ class SpectrometerApp:
                     spectrum = avs.get_spectrum(self.active_spec_handle)
                     wavelengths = self.wavelengths
                     intensities = spectrum[1]
+                
+                if self.spec_type == "DEMO": # Output noise
+                    wavelengths = self.wavelengths
+                    intensities = np.random.rand(1000)
 
                 # Send data to the main thread
                 self.data_queue.put((wavelengths, intensities))
@@ -326,10 +343,15 @@ class SpectrometerApp:
             messagebox.showerror("Save Error", f"Failed to save data: {e}")
 
     def browse_file(self):
-        # Open a file dialog to select a file path
+        '''Open a file dialog to select a file path'''
         file_path = filedialog.asksaveasfilename(defaultextension=".h5", filetypes=[("HDF5 files", "*.h5"), ("All files", "*.*")])
         if file_path:
             self.filepath_var.set(file_path)
+            
+    def frog_interface(self):
+        if self.acquiring:
+            self.toggle_acquisition()
+        pass
 
     def close(self):
         print('Closing...')
@@ -346,6 +368,7 @@ class SpectrometerApp:
             print(f"Error during close: {e}")
         finally:
             self.root.destroy()
+    
 
 # Main function
 if __name__ == "__main__":
