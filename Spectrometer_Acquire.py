@@ -57,6 +57,9 @@ class SpectrometerApp:
         self.acquiring = False
         self.acquired_spectra = []
         self.reference_lines = []  # Store reference lines
+        
+        # Stage for scans
+        self.stage = None
 
         # Set up the plot
         if self.spec_type == "OCEAN_OPTICS":
@@ -209,6 +212,9 @@ class SpectrometerApp:
         
         # Add 'FROG interface' option
         tools_menu.add_command(label="Switch to FROG interface", command=self.frog_interface)
+        
+        # Add 'Stage interface' option
+        tools_menu.add_command(label="Show stage interface", command=self.stage_interface)
 
     def toggle_legend(self):
         # Show or hide the legend based on the menu option
@@ -383,7 +389,11 @@ class SpectrometerApp:
             self.toggle_acquisition()
         self.filepath_var.set('frog_scan.h5')
         self.scan_frame.pack(fill=tk.X)
-        pass
+        self.stage_interface()
+    
+    def stage_interface(self):
+        if self.stage is None:
+            pass
 
     def close(self):
         print('Closing...')
