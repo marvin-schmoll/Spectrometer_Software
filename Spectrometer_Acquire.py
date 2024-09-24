@@ -104,20 +104,50 @@ class SpectrometerApp:
         self.integration_entry.pack(side=tk.LEFT, padx=5)
         self.integration_entry.bind("<Return>", self.set_integration_time)
 
-        # Filepath entry and acquisition controls
-        filepath_frame = ttk.Frame(control_frame)
-        filepath_frame.pack(fill=tk.X, pady=5)
+        # Filepath entry
+        self.filepath_frame = ttk.Frame(control_frame)
+        self.filepath_frame.pack(fill=tk.X, pady=5)
         
-        self.filepath_label = ttk.Label(filepath_frame, text="Save Filepath:")
+        self.filepath_label = ttk.Label(self.filepath_frame, text="Save Filepath:")
         self.filepath_label.pack(side=tk.LEFT, padx=5)
         
         self.filepath_var = tk.StringVar(value="spectra.h5")
-        self.filepath_entry = ttk.Entry(filepath_frame, textvariable=self.filepath_var, width=40)
+        self.filepath_entry = ttk.Entry(self.filepath_frame, textvariable=self.filepath_var, width=40)
         self.filepath_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
-        self.browse_button = ttk.Button(filepath_frame, text="Browse", command=self.browse_file)
+        self.browse_button = ttk.Button(self.filepath_frame, text="Browse", command=self.browse_file)
         self.browse_button.pack(side=tk.LEFT, padx=5)
         
+        # Frog scan parameters (initially invisible)
+        frog_frame = ttk.Frame(control_frame)
+        frog_frame.pack(fill=tk.X, pady=0)
+        
+        self.scan_frame = ttk.Frame(frog_frame)
+        self.scan_frame.pack(fill=tk.X, pady=10)
+        self.scan_frame.pack_forget()
+        
+        self.scan_start_label = ttk.Label(self.scan_frame, text="Start position:")
+        self.scan_start_label.pack(side=tk.LEFT, padx=5)
+        
+        self.scan_start_var = tk.StringVar(value="10")
+        self.scan_start_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_start_var, width=10)
+        self.scan_start_entry.pack(side=tk.LEFT, padx=2)   
+        
+        self.scan_stop_label = ttk.Label(self.scan_frame, text="Stop position:")
+        self.scan_stop_label.pack(side=tk.LEFT, padx=[20,5])
+        
+        self.scan_stop_var = tk.StringVar(value="10")
+        self.scan_stop_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_stop_var, width=10)
+        self.scan_stop_entry.pack(side=tk.LEFT, padx=2)
+        
+        self.scan_step_label = ttk.Label(self.scan_frame, text="Step size:")
+        self.scan_step_label.pack(side=tk.LEFT, padx=[20,5])
+        
+        self.scan_step_var = tk.StringVar(value="10")
+        self.scan_step_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_step_var, width=10)
+        self.scan_step_entry.pack(side=tk.LEFT, padx=2)      
+        
+        # Acquisition control
         acquisition_frame = ttk.Frame(control_frame)
         acquisition_frame.pack(fill=tk.X, pady=5)
         
@@ -351,6 +381,8 @@ class SpectrometerApp:
     def frog_interface(self):
         if self.acquiring:
             self.toggle_acquisition()
+        self.filepath_var.set('frog_scan.h5')
+        self.scan_frame.pack(fill=tk.X)
         pass
 
     def close(self):
