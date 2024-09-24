@@ -1,33 +1,13 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import serial.tools.list_ports
-
-# Simulated Stage class
-class Stage:
-    def __init__(self, port, motor_num):
-        self.port = port
-        self.motor_num = motor_num
-        self.connected = True
-        print(f"Connected to stage on {self.port} (Motor {self.motor_num})")
-    
-    def disconnect(self):
-        self.connected = False
-        print(f"Disconnected from stage (Motor {self.motor_num})")
-    
-    def home(self):
-        if self.connected:
-            print(f"Homing stage (Motor {self.motor_num})...")
-    
-    def move_to(self, position):
-        if self.connected:
-            print(f"Moving stage (Motor {self.motor_num}) to position {position}")
+from stage_driver import esp300
 
 # Main Application GUI
 class StageControllerApp():
     def __init__(self, root):
         self.root = root
         self.root.title("Stage Controller")
-        #self.geometry("400x250")
         
         self.stage = None  # Placeholder for the Stage object
         
@@ -87,6 +67,10 @@ class StageControllerApp():
         # Move Button
         self.move_button = tk.Button(root, text="Move to Position", state="disabled", command=self.move_stage)
         self.move_button.pack(pady=5)
+        
+        # Status label to display feedback
+        self.status_label = tk.Label(root, text="", fg="blue")
+        self.status_label.pack(pady=5)
     
     def get_com_ports(self):
         """Get available COM ports."""
@@ -96,44 +80,61 @@ class StageControllerApp():
     def connect_stage(self):
         """Connect to the stage."""
         selected_port = self.com_port_var.get()
-        motor_number = self.motor_var.get()
-        
+           
         if not selected_port:
-            messagebox.showwarning("Warning", "Please select a COM port")
+            messagebox.showinfo("Connection failed", "Please select a COM port")
             return
         
-        self.stage = Stage(selected_port, motor_number)  # Create the Stage object with motor number
-        self.connect_button.config(state="disabled")
-        self.disconnect_button.config(state="normal")
-        self.home_button.config(state="normal")
-        self.move_button.config(state="normal")
+        try:
+            self.stage = esp300.ESP300Controller(selected_port)
+            self.status_label.config(text=f"Connected to {selected_port}", fg="green")
+            self.connect_button.config(state="disabled")
+            self.disconnect_button.config(state="normal")
+            self.home_button.config(state="normal")
+            self.move_button.config(state="normal")
+        except Exception as e:
+            messagebox.showerror("Connection Error", f"Failed to connect to {selected_port}.\n{str(e)}")
     
     def disconnect_stage(self):
         """Disconnect from the stage."""
         if self.stage:
-            self.stage.disconnect()
+            self.stage.close()
             self.stage = None
             self.connect_button.config(state="normal")
             self.disconnect_button.config(state="disabled")
             self.home_button.config(state="disabled")
             self.move_button.config(state="disabled")
+            self.status_label.config(text="Disconnected from stage", fg="red")
     
     def home_stage(self):
         """Send the stage to home position."""
+        motor_number = self.motor_var.get()  
         if self.stage:
-            self.stage.home()
+            self.status_label.config(text=f"Homing motor {motor_number}...", fg="blue")
+            try:
+                self.stage.search_for_home(motor_number)
+                self.status_label.config(text=f"Motor {motor_number} homed", fg="green")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to home motor {motor_number}.\n{str(e)}")
     
     def move_stage(self):
         """Move the stage to the specified position."""
+        motor_number = self.motor_var.get()
         if self.stage:
             try:
                 position = float(self.position_entry.get())
-                self.stage.move_to(position)
+                self.status_label.config(text=f"Moving motor {motor_number} to position {position}...", fg="blue")
+                self.stage.move_absolute(motor_number, position)
+                self.status_label.config(text=f"Motor {motor_number} moved to {position}", fg="green")
             except ValueError:
                 messagebox.showerror("Error", "Invalid position. Please enter a valid number.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to move motor {motor_number}.\n{str(e)}")
     
     def close(self):
         print('Closing stage UI')
+        if self.stage:
+            self.stage.close()
         self.root.destroy()
 
 if __name__ == "__main__":
