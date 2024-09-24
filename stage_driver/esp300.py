@@ -54,7 +54,7 @@ class ESP300Controller:
         return self.serial.readline().decode().strip()
     
     
-    def read_errors(self):
+    def get_errors(self):
         """
         Reads the first entry from the error buffer.
         
@@ -209,7 +209,32 @@ class ESP300Controller:
             Axis number (1 to MAX AXES).
         """
         self.send_command(f"{axis}WS")
+                
+    def get_motion_status(self, axis):
+        """
+        Retrieves the current velocity of the specified axis.
 
+        Command: MD?
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        
+        Returns
+        -------
+        bool
+            Whether the axis is still moving.
+        
+        Notes
+        -----
+        The output is deliberately inverted from what the stage provides 
+        and what its manual specifies. This is so that True corresponds to 
+        moving and False corresponds to movement done.
+        """
+        self.send_command(f"{axis}MD?")
+        return not bool(int(self.read_response()))
+    
 
     def set_velocity(self, axis, velocity):
         """
@@ -294,4 +319,3 @@ class ESP300Controller:
         Closes the serial connection to the controller.
         """
         self.serial.close()
-
