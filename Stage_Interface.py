@@ -7,27 +7,28 @@ import time
 
 # Main Application GUI
 class StageControllerApp():
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, parent=None, stage=None):  # TODO: implement possibility for existing stage
+        self.root = tk.Tk()
         self.root.title("Stage Controller")
         
-        self.stage = None  # Placeholder for the Stage object
+        self.parent = parent  # Calling class if applicable
+        self.stage = stage  # Placeholder for the Stage object
         self.update_thread = None  # Thread for updating position
         self.running = False  # Control flag for thread
 
         # Create frames for better layout control
-        com_frame = tk.Frame(root)
-        motor_frame = tk.Frame(root)
-        connect_frame = tk.Frame(root)
-        home_frame = tk.Frame(root)
-        move_frame = tk.Frame(root)
+        com_frame = tk.Frame(self.root)
+        motor_frame = tk.Frame(self.root)
+        connect_frame = tk.Frame(self.root)
+        home_frame = tk.Frame(self.root)
+        move_frame = tk.Frame(self.root)
         
         # COM Port Selection Dropdown (label on the left)
         self.com_label = tk.Label(com_frame, text="Select COM Port:")
         self.com_label.pack(side="left", padx=5)
         
         self.com_ports = self.get_com_ports()
-        self.com_port_var = tk.StringVar(root)
+        self.com_port_var = tk.StringVar(self.root)
         self.com_port_dropdown = ttk.Combobox(com_frame, textvariable=self.com_port_var, values=self.com_ports, state="readonly")
         self.com_port_dropdown.pack(side="left", padx=5)
         
@@ -37,7 +38,7 @@ class StageControllerApp():
         self.motor_label = tk.Label(motor_frame, text="Select Motor Number:")
         self.motor_label.pack(side="left", padx=5)
         
-        self.motor_var = tk.IntVar(root, value=2)
+        self.motor_var = tk.IntVar(self.root, value=2)
         self.motor_spinbox = tk.Spinbox(motor_frame, from_=1, to=3, textvariable=self.motor_var, state="readonly", width=5)
         self.motor_spinbox.pack(side="left", padx=5)
         
@@ -53,7 +54,7 @@ class StageControllerApp():
         connect_frame.pack(pady=5)
         
         # Position display label
-        self.position_label = tk.Label(root, text="Current Position: N/A", fg="blue")
+        self.position_label = tk.Label(self.root, text="Current Position: N/A", fg="blue")
         self.position_label.pack(pady=5)
         
         # Home Button (single row)
@@ -73,12 +74,16 @@ class StageControllerApp():
         move_frame.pack(pady=5)
         
         # Move Button
-        self.move_button = tk.Button(root, text="Move to Position", state="disabled", command=self.move_stage)
+        self.move_button = tk.Button(self.root, text="Move to Position", state="disabled", command=self.move_stage)
         self.move_button.pack(pady=5)
         
         # Status label to display feedback
-        self.status_label = tk.Label(root, text="", fg="blue")
+        self.status_label = tk.Label(self.root, text="", fg="blue")
         self.status_label.pack(pady=5)
+        
+        # Show window
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.mainloop()
     
     def get_com_ports(self):
         """Get available COM ports."""
@@ -95,6 +100,8 @@ class StageControllerApp():
         
         try:
             self.stage = esp300.ESP300Controller(selected_port)
+            if self.parent:
+                self.parent.stage = self.stage
             self.status_label.config(text=f"Connected to {selected_port}", fg="green")
             self.com_port_dropdown.config(state="disabled")
             self.connect_button.config(state="disabled")
@@ -120,6 +127,8 @@ class StageControllerApp():
 
             self.stage.close()
             self.stage = None
+            if self.parent:
+                self.parent.stage = None
             self.com_port_dropdown.config(state="enabled")
             self.connect_button.config(state="normal")
             self.disconnect_button.config(state="disabled")
@@ -183,8 +192,6 @@ class StageControllerApp():
             self.stage.close()
         self.root.destroy()
 
+
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = StageControllerApp(root)
-    root.protocol("WM_DELETE_WINDOW", app.close)
-    root.mainloop()
+    app = StageControllerApp()

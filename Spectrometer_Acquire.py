@@ -11,6 +11,7 @@ import queue
 import time
 import h5py
 import os
+import Stage_Interface
  
 class SpectrometerApp:
     def __init__(self, root):
@@ -393,7 +394,7 @@ class SpectrometerApp:
     
     def stage_interface(self):
         if self.stage is None:
-            pass
+            Stage_Interface.StageControllerApp(self, self.stage)
 
     def close(self):
         print('Closing...')
