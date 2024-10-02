@@ -9,6 +9,7 @@ import numpy as np
 import threading
 import queue
 import time
+from datetime import datetime
 import h5py
 import os
 import Stage_Interface
@@ -57,6 +58,7 @@ class SpectrometerApp:
         # Data acquisition toggle
         self.acquiring = False
         self.acquired_spectra = []
+        self.timestamps = []
         self.reference_lines = []  # Store reference lines
         
         # Stage for scans
@@ -284,7 +286,7 @@ class SpectrometerApp:
 
     def update_plot(self):
         while not self.data_queue.empty():
-            wavelengths, intensities = self.data_queue.get()
+            wavelengths, intensities, timestamp = self.data_queue.get()
             
             if self.request_background:
                 self.background_spectrum = intensities
@@ -303,6 +305,7 @@ class SpectrometerApp:
             # Save spectrum if acquiring
             if self.acquiring:
                 self.acquired_spectra.append(intensities)
+                self.timestamps.append(timestamp)
 
         # Schedule the next update
         if self.running_event.is_set():
@@ -324,9 +327,12 @@ class SpectrometerApp:
                 if self.spec_type == "DEMO": # Output noise
                     wavelengths = self.wavelengths
                     intensities = np.random.rand(1000)
+                    
+                now = datetime.now()
+                timestamp = (now.hour * 3600 + now.minute * 60 + now.second + now.microsecond / 1e6)
 
                 # Send data to the main thread
-                self.data_queue.put((wavelengths, intensities))
+                self.data_queue.put((wavelengths, intensities, timestamp))
 
                 time.sleep(0.1) # TODO: Can this be faster?
             except sb.SeaBreezeError as e:
@@ -364,6 +370,7 @@ class SpectrometerApp:
             self.acquire_button.config(text="Stop acquire")
             self.acquiring_label.config(text="Acquiring...")
             self.acquired_spectra = []  # Reset acquired spectra list
+            self.timestamps = []
 
     def save_spectra(self):
         # Save the acquired spectra to an HDF5 file
@@ -375,6 +382,7 @@ class SpectrometerApp:
             with h5py.File(file_path, "w") as f:
                 f.create_dataset("wavelengths", data=self.wavelengths)
                 f.create_dataset("spectra", data=np.array(self.acquired_spectra))
+                f.create_dataset("timestamps", data=np.array(self.timestamps))
             print(f"Data saved to {file_path}")
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save data: {e}")
