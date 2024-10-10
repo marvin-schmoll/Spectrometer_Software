@@ -22,6 +22,7 @@ class StageControllerApp():
         connect_frame = tk.Frame(self.root)
         home_frame = tk.Frame(self.root)
         move_frame = tk.Frame(self.root)
+        errorcode_frame = tk.Frame(self.root)
         
         # COM Port Selection Dropdown (label on the left)
         self.com_label = tk.Label(com_frame, text="Select COM Port:")
@@ -52,11 +53,12 @@ class StageControllerApp():
         self.disconnect_button.pack(side="left", padx=5)
         
         connect_frame.pack(pady=5)
-        
+         
         # Position display label
         self.position_label = tk.Label(self.root, text="Current Position: N/A", fg="blue")
         self.position_label.pack(pady=5)
         
+             
         # Home Button (single row)
         self.home_button = tk.Button(home_frame, text="Home", state="disabled", command=self.home_stage)
         self.home_button.pack()
@@ -76,6 +78,16 @@ class StageControllerApp():
         # Move Button
         self.move_button = tk.Button(self.root, text="Move to Position", state="disabled", command=self.move_stage)
         self.move_button.pack(pady=5)
+        
+        #show last errorcode
+        self.errorcode_button = tk.Button(errorcode_frame, text="Show last errorcode",state="disabled",command=self.errors)
+        self.errorcode_button.pack(side="left", padx=5)
+        
+        self.errorcode_label = tk.Label(errorcode_frame, text="None", fg="blue")
+        self.errorcode_label.pack(side="left", padx=5)
+        
+        errorcode_frame.pack(pady=5)
+      
         
         # Status label to display feedback
         self.status_label = tk.Label(self.root, text="", fg="blue")
@@ -108,6 +120,7 @@ class StageControllerApp():
             self.disconnect_button.config(state="normal")
             self.home_button.config(state="normal")
             self.move_button.config(state="normal")
+            self.errorcode_button.config(state="normal")
             
             # Start position update thread
             self.running = True
@@ -136,6 +149,7 @@ class StageControllerApp():
             self.move_button.config(state="disabled")
             self.status_label.config(text="Disconnected from stage", fg="red")
             self.position_label.config(text="Current Position: N/A", fg="blue")  # Reset position display
+            self.errorcode_button.config(state="disabled")
     
     def update_position_thread(self):
         """Background thread to update the position every 0.5 seconds."""
@@ -181,6 +195,10 @@ class StageControllerApp():
                 messagebox.showerror("Error", "Invalid position. Please enter a valid number.")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to move motor {motor_number}.\n{str(e)}")
+
+    def errors(self):
+        error = self.stage.get_errors()
+        self.errorcode_label.config(text=error)
     
     def close(self):
         """Cleanup and close the application."""
