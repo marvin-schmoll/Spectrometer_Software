@@ -67,7 +67,55 @@ class ESP300Controller:
         """
         self.send_command("TB?")
         return self.read_response().split(',')
+
+
+    def get_motor_on(self, axis):
+        """
+        Checks if specified motor is turned on.
+
+        Command: MO?
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        position : float
+            Desired absolute position in predefined units.
+            
+        Returns
+        -------
+        bool
+            True if specified motor is on.
+        """
+        self.send_command(f"{axis}MO?")
+        return bool(int(self.read_response()))
+
+    def turn_motor_on(self, axis):
+        """
+        Turns on the specified motor.
+
+        Command: MO
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        """
+        self.send_command(f"{axis}MO")
     
+    def turn_motor_off(self, axis):
+        """
+        Turns off the specified motor.
+
+        Command: MF
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        """
+        self.send_command(f"{axis}MF")
+        
     
     def set_homing_mode(self, axis, mode=4):
         """

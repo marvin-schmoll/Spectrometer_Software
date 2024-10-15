@@ -7,12 +7,13 @@ import time
 
 # Main Application GUI
 class StageControllerApp():
-    def __init__(self, parent=None, stage=None):  # TODO: implement possibility for existing stage
+    def __init__(self, parent=None, stage=None, motor=None):  # TODO: implement possibility for existing stage
         self.root = tk.Tk()
         self.root.title("Stage Controller")
         
         self.parent = parent  # Calling class if applicable
         self.stage = stage  # Placeholder for the Stage object
+        self.motor_number = motor  # Placeholder for the Stage object
         self.update_thread = None  # Thread for updating position
         self.running = False  # Control flag for thread
 
@@ -105,6 +106,7 @@ class StageControllerApp():
     def connect_stage(self):
         """Connect to the stage."""
         selected_port = self.com_port_var.get()
+        self.motor_number = self.motor_var.get()
         
         if not selected_port:
             messagebox.showinfo("Connection failed", "Please select a COM port")
@@ -112,8 +114,10 @@ class StageControllerApp():
         
         try:
             self.stage = esp300.ESP300Controller(selected_port)
+            self.stage.turn_motor_on(self.motor_number)
             if self.parent:
                 self.parent.stage = self.stage
+                self.parent.motor_number = self.motor_number
             self.status_label.config(text=f"Connected to {selected_port}", fg="green")
             self.com_port_dropdown.config(state="disabled")
             self.connect_button.config(state="disabled")
@@ -121,6 +125,7 @@ class StageControllerApp():
             self.home_button.config(state="normal")
             self.move_button.config(state="normal")
             self.errorcode_button.config(state="normal")
+            self.motor_spinbox.config(state="disabled")
             
             # Start position update thread
             self.running = True
@@ -140,8 +145,10 @@ class StageControllerApp():
 
             self.stage.close()
             self.stage = None
+            self.motor_number = None
             if self.parent:
                 self.parent.stage = None
+                self.parent.motor_number = None
             self.com_port_dropdown.config(state="enabled")
             self.connect_button.config(state="normal")
             self.disconnect_button.config(state="disabled")
@@ -150,14 +157,14 @@ class StageControllerApp():
             self.status_label.config(text="Disconnected from stage", fg="red")
             self.position_label.config(text="Current Position: N/A", fg="blue")  # Reset position display
             self.errorcode_button.config(state="disabled")
+            self.motor_spinbox.config(state="normal")
     
     def update_position_thread(self):
         """Background thread to update the position every 0.5 seconds."""
         while self.running:
-            motor_number = self.motor_var.get()
             if self.stage:
                 try:
-                    position = self.stage.get_position(motor_number)
+                    position = self.stage.get_position(self.motor_number)
                     # Schedule the position update in the main thread
                     self.root.after(0, self.update_position_label, position)
                 except Exception:
@@ -172,33 +179,34 @@ class StageControllerApp():
             self.position_label.config(text="Error reading position", fg="red")
     
     def home_stage(self):
-        """Send the stage to home position."""
-        motor_number = self.motor_var.get()  
+        """Send the stage to home position.""" 
         if self.stage:
-            self.status_label.config(text=f"Homing motor {motor_number}...", fg="blue")
+            self.status_label.config(text=f"Homing motor {self.motor_number}...", fg="blue")
             try:
-                self.stage.search_for_home(motor_number)
-                self.status_label.config(text=f"Motor {motor_number} homed", fg="green")
+                self.stage.search_for_home(self.motor_number)
+                self.status_label.config(text=f"Motor {self.motor_number} homed", fg="green")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to home motor {motor_number}.\n{str(e)}")
+                messagebox.showerror("Error", f"Failed to home motor {self.motor_number}.\n{str(e)}")
     
     def move_stage(self):
         """Move the stage to the specified position."""
-        motor_number = self.motor_var.get()
         if self.stage:
             try:
                 position = float(self.position_entry.get())
-                self.status_label.config(text=f"Moving motor {motor_number} to position {position}...", fg="blue")
-                self.stage.move_absolute(motor_number, position)
-                self.status_label.config(text=f"Motor {motor_number} moved to {position}", fg="green")
+                self.status_label.config(text=f"Moving motor {self.motor_number} to position {position}...", fg="blue")
+                self.stage.move_absolute(self.motor_number, position)
+                self.status_label.config(text=f"Motor {self.motor_number} moved to {position}", fg="green")
             except ValueError:
                 messagebox.showerror("Error", "Invalid position. Please enter a valid number.")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to move motor {motor_number}.\n{str(e)}")
+                messagebox.showerror("Error", f"Failed to move motor {self.motor_number}.\n{str(e)}")
 
     def errors(self):
         error = self.stage.get_errors()
-        self.errorcode_label.config(text=error)
+        if error[0] == '0':
+            self.errorcode_label.config(text='No error detected :)', fg='green')
+        else:
+            self.errorcode_label.config(text=error[2], fg='red')
     
     def close(self):
         """Cleanup and close the application."""
