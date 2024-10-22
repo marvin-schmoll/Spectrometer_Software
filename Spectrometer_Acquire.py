@@ -54,6 +54,7 @@ class SpectrometerApp:
         self.request_background = False
         self.background_spectrum = None
         self.subtract_background = tk.BooleanVar(value=False)
+        self.frog_mode = False
         
         # Data acquisition toggle
         self.acquiring = False
@@ -139,21 +140,27 @@ class SpectrometerApp:
         
         self.scan_start_var = tk.StringVar(value="10")
         self.scan_start_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_start_var, width=10)
-        self.scan_start_entry.pack(side=tk.LEFT, padx=2)   
+        self.scan_start_entry.pack(side=tk.LEFT, padx=2)
+        self.scan_start_entry.bind("<Return>", self.calculate_step_number)
         
         self.scan_stop_label = ttk.Label(self.scan_frame, text="Stop position:")
         self.scan_stop_label.pack(side=tk.LEFT, padx=[20,5])
         
-        self.scan_stop_var = tk.StringVar(value="10")
+        self.scan_stop_var = tk.StringVar(value="11")
         self.scan_stop_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_stop_var, width=10)
         self.scan_stop_entry.pack(side=tk.LEFT, padx=2)
+        self.scan_stop_entry.bind("<Return>", self.calculate_step_number)
         
         self.scan_step_label = ttk.Label(self.scan_frame, text="Step size:")
         self.scan_step_label.pack(side=tk.LEFT, padx=[20,5])
         
-        self.scan_step_var = tk.StringVar(value="10")
+        self.scan_step_var = tk.StringVar(value="0.01")
         self.scan_step_entry = ttk.Entry(self.scan_frame, textvariable=self.scan_step_var, width=10)
-        self.scan_step_entry.pack(side=tk.LEFT, padx=2)      
+        self.scan_step_entry.pack(side=tk.LEFT, padx=2)
+        self.scan_step_entry.bind("<Return>", self.calculate_step_number)
+        
+        self.scan_step_number_label = ttk.Label(self.scan_frame, text="100 Steps", foreground="blue")
+        self.scan_step_number_label.pack(side=tk.LEFT, padx=[20,5])
         
         # Acquisition control
         acquisition_frame = ttk.Frame(control_frame)
@@ -401,11 +408,19 @@ class SpectrometerApp:
         self.filepath_var.set('frog_scan.h5')
         self.scan_frame.pack(fill=tk.X)
         self.stage_interface()
+        self.frog_mode = True
     
     def stage_interface(self):
         if not self.stage_interface_open:
             self.stage_interface_open = True
-            self.stage_interface = Stage_Interface.StageControllerApp(self, self.stage, self.motor_number)            
+            self.stage_interface = Stage_Interface.StageControllerApp(self, self.stage, self.motor_number)
+    
+    def calculate_step_number(self, event):
+        start = float(self.scan_start_var.get())
+        stop = float(self.scan_stop_var.get())
+        step = float(self.scan_step_var.get())
+        steps = np.arange(start, stop, step)
+        self.scan_step_number_label.config(text=(str(len(steps))+' Steps'))
 
     def close(self):
         print('Closing...')
