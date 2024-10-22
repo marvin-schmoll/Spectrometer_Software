@@ -61,8 +61,10 @@ class SpectrometerApp:
         self.timestamps = []
         self.reference_lines = []  # Store reference lines
         
-        # Stage for scans
+        # Stage for scans and interface
+        self.stage_interface_open = False
         self.stage = None
+        self.motor_number = None
 
         # Set up the plot
         if self.spec_type == "OCEAN_OPTICS":
@@ -401,8 +403,9 @@ class SpectrometerApp:
         self.stage_interface()
     
     def stage_interface(self):
-        if self.stage is None:
-            Stage_Interface.StageControllerApp(self, self.stage)
+        if not self.stage_interface_open:
+            self.stage_interface_open = True
+            self.stage_interface = Stage_Interface.StageControllerApp(self, self.stage, self.motor_number)            
 
     def close(self):
         print('Closing...')
@@ -414,6 +417,8 @@ class SpectrometerApp:
             if self.spec_type == "AVANTES":
                 avs.AVS_Deactivate(self.active_spec_handle)
                 avs.AVS_Done()
+            if self.stage is not None:
+                self.stage.close()
             print('Program closed and spectrometer disconnected.')
         except Exception as e:
             print(f"Error during close: {e}")

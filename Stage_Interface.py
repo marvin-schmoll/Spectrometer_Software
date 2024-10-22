@@ -7,8 +7,11 @@ import time
 
 # Main Application GUI
 class StageControllerApp():
-    def __init__(self, parent=None, stage=None, motor=None):  # TODO: implement possibility for existing stage
-        self.root = tk.Tk()
+    def __init__(self, parent=None, stage=None, motor=None):
+        if parent is None:
+            self.root = tk.Tk()
+        else:
+            self.root = tk.Toplevel()
         self.root.title("Stage Controller")
         
         self.parent = parent  # Calling class if applicable
@@ -93,6 +96,20 @@ class StageControllerApp():
         # Status label to display feedback
         self.status_label = tk.Label(self.root, text="", fg="blue")
         self.status_label.pack(pady=5)
+        
+        # Alter interface if a stage is already connected
+        if self.stage is not None:
+            self.running = True
+            self.update_thread = threading.Thread(target=self.update_position_thread)
+            self.update_thread.start()
+            self.status_label.config(text="Already connected to a stage", fg="blue")
+            self.com_port_dropdown.config(state="disabled")
+            self.connect_button.config(state="disabled")
+            self.disconnect_button.config(state="normal")
+            self.home_button.config(state="normal")
+            self.move_button.config(state="normal")
+            self.errorcode_button.config(state="normal")
+            self.motor_spinbox.config(state="disabled")
         
         # Show window
         self.root.protocol("WM_DELETE_WINDOW", self.close)
@@ -214,8 +231,11 @@ class StageControllerApp():
         self.running = False  # Stop the update thread
         if self.update_thread:
             self.update_thread.join()
-        if self.stage:
-            self.stage.close()
+        if self.parent is None:
+            if self.stage:
+                self.stage.close()
+        else:
+            self.parent.stage_interface_open = False
         self.root.destroy()
 
 
