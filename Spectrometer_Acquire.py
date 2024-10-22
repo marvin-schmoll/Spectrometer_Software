@@ -297,24 +297,10 @@ class SpectrometerApp:
         while not self.data_queue.empty():
             wavelengths, intensities, timestamp = self.data_queue.get()
             
-            if self.request_background:
-                self.background_spectrum = intensities
-                print("Background spectrum taken and cached.")
-                self.request_background = False
-            
-            # Subtract background if enabled
-            if self.subtract_background.get() and self.background_spectrum is not None:
-                intensities = intensities - self.background_spectrum
-            
             self.line.set_data(wavelengths, intensities)
             self.ax.relim()
             self.ax.autoscale_view(True, True, True)
             self.canvas.draw()
-
-            # Save spectrum if acquiring
-            if self.acquiring:
-                self.acquired_spectra.append(intensities)
-                self.timestamps.append(timestamp)
 
         # Schedule the next update
         if self.running_event.is_set():
@@ -339,11 +325,27 @@ class SpectrometerApp:
                     
                 now = datetime.now()
                 timestamp = (now.hour * 3600 + now.minute * 60 + now.second + now.microsecond / 1e6)
+                
+                if self.request_background:
+                    self.background_spectrum = intensities
+                    print("Background spectrum taken and cached.")
+                    self.request_background = False
+                
+                # Subtract background if enabled
+                if self.subtract_background.get() and self.background_spectrum is not None:
+                    intensities = intensities - self.background_spectrum
+                
+                # Save spectrum if acquiring
+                if self.acquiring:
+                    self.acquired_spectra.append(intensities)
+                    self.timestamps.append(timestamp)
 
-                # Send data to the main thread
+                # Send data to the main thread for plotting
+                with self.data_queue.mutex:
+                    self.data_queue.queue.clear()
                 self.data_queue.put((wavelengths, intensities, timestamp))
 
-                time.sleep(0.1) # TODO: Can this be faster?
+                time.sleep(0.01) # TODO: Can this be even faster?
             except sb.SeaBreezeError as e:
                 print(f"Spectrometer error: {e}")
                 messagebox.showerror("Spectrometer Error", f"Spectrometer error occurred: {e}")
