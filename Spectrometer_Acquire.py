@@ -409,8 +409,9 @@ class SpectrometerApp:
             self.toggle_acquisition()
         self.filepath_var.set('frog_scan.h5')
         self.scan_frame.pack(fill=tk.X)
-        self.stage_interface()
         self.frog_mode = True
+        self.acquire_button.config(text='Start Scan', command=self.start_frog_scan)
+        self.stage_interface()
     
     def stage_interface(self):
         if not self.stage_interface_open:
@@ -421,8 +422,28 @@ class SpectrometerApp:
         start = float(self.scan_start_var.get())
         stop = float(self.scan_stop_var.get())
         step = float(self.scan_step_var.get())
-        steps = np.arange(start, stop, step)
-        self.scan_step_number_label.config(text=(str(len(steps))+' Steps'))
+        self.stage_steps = np.arange(start, stop, step)
+        self.scan_step_number_label.config(text=(str(len(self.stage_steps))+' Steps'))
+    
+    def start_frog_scan(self):
+        print('Performing FROG scan...')
+        self.acquire_button.config(state="disabled")
+        self.acquiring_label.config(text="Acquiring FROG scan")
+        self.calculate_step_number(None)
+        self.frog_thread = threading.Thread(target=self.frog_scan_loop)
+        self.frog_thread.daemon = True
+        self.frog_thread.start()
+        
+    def frog_scan_loop(self):
+        print('Test1')
+        n_steps = len(self.stage_steps)
+        for p, position in enumerate(self.stage_steps):
+            self.scan_step_number_label.config(text=f"step {p}/{n_steps}" ,foreground="red")
+            self.stage.move_absolute(self.motor_number, str(position))
+            #while self.stage.get_motion_status(self.motor_number):
+                #time.sleep(0.01)
+            time.sleep(2) # TODO: implement mutex lock so this can be checked in parallel
+            pass 
 
     def close(self):
         print('Closing...')
