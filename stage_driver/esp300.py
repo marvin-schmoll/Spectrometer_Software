@@ -42,17 +42,43 @@ class ESP300Controller:
         full_command = f"{command}\r"
         self.serial.write(full_command.encode())
 
-    def read_response(self):
+    def read_response(self, command):
         """
-        Reads the response from the controller.
+        Sends a command to the controller.
+        Reads its response and returns it as a string.
+        
+        Parameters
+        ----------
+        command : str
+            The command string to be sent to the controller.
         
         Returns
         -------
         str
             The response from the controller.
         """
+        full_command = f"{command}\r"
+        self.serial.write(full_command.encode())
         return self.serial.readline().decode().strip()
     
+    
+    def get_id(self, axis):
+        """
+        Reads the stage model and serial number.
+        
+        Command: ID?
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        
+        Returns
+        -------
+        arr of str
+            stage model, serial number
+        """
+        return self.read_response(f"{axis}ID?").split(',')
     
     def get_errors(self):
         """
@@ -65,8 +91,7 @@ class ESP300Controller:
         arr of str
             error code, timestamp, error message
         """
-        self.send_command("TB?")
-        return self.read_response().split(',')
+        return self.read_response("TB?").split(',')
 
 
     def get_motor_on(self, axis):
@@ -79,16 +104,13 @@ class ESP300Controller:
         ----------
         axis : int
             Axis number (1 to MAX AXES).
-        position : float
-            Desired absolute position in predefined units.
             
         Returns
         -------
         bool
             True if specified motor is on.
         """
-        self.send_command(f"{axis}MO?")
-        return bool(int(self.read_response()))
+        return bool(int(self.read_response(f"{axis}MO?")))
 
     def turn_motor_on(self, axis):
         """
@@ -162,8 +184,7 @@ class ESP300Controller:
             5: find positive limit and index signals
             6: find negative limit and index signals
         """
-        self.send_command(f"{axis}OM?")
-        return self.read_response()
+        return self.read_response(f"{axis}OM?")
     
     def search_for_home(self, axis, mode=None):
         """
@@ -229,8 +250,7 @@ class ESP300Controller:
         str
             The current position of the axis.
         """
-        self.send_command(f"{axis}TP")
-        return self.read_response()
+        return self.read_response(f"{axis}TP")
 
     def stop_motion(self, axis):
         """
@@ -280,8 +300,7 @@ class ESP300Controller:
         and what its manual specifies. This is so that True corresponds to 
         moving and False corresponds to movement done.
         """
-        self.send_command(f"{axis}MD?")
-        return not bool(int(self.read_response()))
+        return not bool(int(self.read_response(f"{axis}MD?")))
     
 
     def set_velocity(self, axis, velocity):
@@ -315,8 +334,7 @@ class ESP300Controller:
         str
             The current velocity of the axis.
         """
-        self.send_command(f"{axis}TV")
-        return self.read_response()
+        return self.read_response(f"{axis}TV")
     
     def set_acceleration(self, axis, acceleration):
         """
@@ -349,8 +367,7 @@ class ESP300Controller:
         str
             The current acceleration of the axis.
         """
-        self.send_command(f"{axis}AC?")
-        return self.read_response()
+        return self.read_response(f"{axis}AC?")
 
 
     def reset_controller(self):
