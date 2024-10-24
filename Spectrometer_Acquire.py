@@ -196,6 +196,7 @@ class SpectrometerApp:
         self.data_queue = queue.Queue()
         self.running_event = threading.Event()
         self.running_event.set()
+        self.request_frog_spectrum = threading.Event()
         self.update_thread = threading.Thread(target=self.spectrum_update_loop)
         self.update_thread.daemon = True
         self.update_thread.start()
@@ -339,7 +340,15 @@ class SpectrometerApp:
                 if self.acquiring:
                     self.acquired_spectra.append(intensities)
                     self.timestamps.append(timestamp)
-
+                
+                # Save spectrum if requested by FROG
+                if self.request_frog_spectrum.is_set():
+                    self.acquired_spectra.append(intensities)
+                    self.timestamps.append(timestamp)
+                    position = self.stage.get_position(self.motor_number)
+                    self.stage_values.append(float(position))
+                    self.request_frog_spectrum.clear()
+                    
                 # Send data to the main thread for plotting
                 with self.data_queue.mutex:
                     self.data_queue.queue.clear()
@@ -394,6 +403,8 @@ class SpectrometerApp:
                 f.create_dataset("wavelengths", data=self.wavelengths)
                 f.create_dataset("spectra", data=np.array(self.acquired_spectra))
                 f.create_dataset("timestamps", data=np.array(self.timestamps))
+                if self.frog_mode:
+                    f.create_dataset("positions", data=np.array(self.stage_values))
             print(f"Data saved to {file_path}")
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save data: {e}")
@@ -407,6 +418,9 @@ class SpectrometerApp:
     def frog_interface(self):
         if self.acquiring:
             self.toggle_acquisition()
+        self.acquired_spectra = []  # Reset acquired spectra list
+        self.timestamps = []
+        self.stage_values = []
         self.filepath_var.set('frog_scan.h5')
         self.scan_frame.pack(fill=tk.X)
         self.frog_mode = True
@@ -429,23 +443,28 @@ class SpectrometerApp:
         print('Performing FROG scan...')
         self.acquire_button.config(state="disabled")
         self.acquiring_label.config(text="Acquiring FROG scan")
-        self.calculate_step_number(None)
+        self.calculate_step_number()
         self.frog_thread = threading.Thread(target=self.frog_scan_loop)
         self.frog_thread.daemon = True
         self.frog_thread.start()
         
     def frog_scan_loop(self):
-        print('Test1')
         n_steps = len(self.stage_steps)
         for p, position in enumerate(self.stage_steps):
             self.scan_step_number_label.config(text=f"step {p}/{n_steps}" ,foreground="red")
             self.stage.move_absolute(self.motor_number, str(position))
             while self.stage.get_motion_status(self.motor_number):
                 time.sleep(0.05)
-            pass
+            time.sleep(0.2) # wait 200ms after stop before acquiring spectrum
+            self.request_frog_spectrum.set()
+            while self.request_frog_spectrum.is_set():
+                time.sleep(0.05)
         self.scan_step_number_label.config(text=f"step {n_steps}/{n_steps}" ,foreground="blue")
+        self.save_spectra()
         time.sleep(2)
-        self.calculate_step_number(None)
+        self.calculate_step_number()
+        self.acquire_button.config(state="enabled")
+        return
 
     def close(self):
         print('Closing...')

@@ -177,7 +177,7 @@ class StageControllerApp():
             self.motor_spinbox.config(state="normal")
     
     def update_position_thread(self):
-        """Background thread to update the position every 0.5 seconds."""
+        """Background thread to update the position every 0.2 seconds."""
         while self.running:
             if self.stage:
                 try:
@@ -186,7 +186,7 @@ class StageControllerApp():
                     self.root.after(0, self.update_position_label, position)
                 except Exception:
                     self.root.after(0, self.update_position_label, None)
-            time.sleep(0.5)
+            time.sleep(0.2)
     
     def update_position_label(self, position):
         """Update the position label in the GUI thread."""
