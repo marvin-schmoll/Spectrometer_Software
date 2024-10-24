@@ -418,7 +418,7 @@ class SpectrometerApp:
             self.stage_interface_open = True
             self.stage_interface = Stage_Interface.StageControllerApp(self, self.stage, self.motor_number)
     
-    def calculate_step_number(self, event):
+    def calculate_step_number(self, event=None):
         start = float(self.scan_start_var.get())
         stop = float(self.scan_stop_var.get())
         step = float(self.scan_step_var.get())
@@ -440,10 +440,12 @@ class SpectrometerApp:
         for p, position in enumerate(self.stage_steps):
             self.scan_step_number_label.config(text=f"step {p}/{n_steps}" ,foreground="red")
             self.stage.move_absolute(self.motor_number, str(position))
-            #while self.stage.get_motion_status(self.motor_number):
-                #time.sleep(0.01)
-            time.sleep(2) # TODO: implement mutex lock so this can be checked in parallel
-            pass 
+            while self.stage.get_motion_status(self.motor_number):
+                time.sleep(0.05)
+            pass
+        self.scan_step_number_label.config(text=f"step {n_steps}/{n_steps}" ,foreground="blue")
+        time.sleep(2)
+        self.calculate_step_number(None)
 
     def close(self):
         print('Closing...')

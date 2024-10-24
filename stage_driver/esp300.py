@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import serial
+import threading
 
 
 class ESP300Controller:
     '''A Python interface to the Newport ESP300 Motion Controller using RS-232 communication.'''
     
-    def __init__(self, port='COM27', baudrate=19200, timeout=1):
+    def __init__(self, port='COM27', baudrate=19200, timeout=1, create_lock=False):
         """
         Initializes the connection to the ESP300 motion controller.
         
@@ -18,6 +19,11 @@ class ESP300Controller:
             Communication baud rate (default: 19200).
         timeout : int
             Communication timeout in seconds.
+        create_lock : bool
+            If True a threading.Lock is created that is acquired before every 
+            serial communication with the stage and released afterwards.
+            This helps thread safety when it is commanded by multiple threads.
+            Default is False.
         """
         self.port = port
         self.baudrate = baudrate
@@ -28,6 +34,10 @@ class ESP300Controller:
         self.serial = serial.Serial(port, baudrate, bytesize=self.bytesize,
                                     parity=self.parity, stopbits=self.stopbits, 
                                     timeout=timeout)
+        if create_lock:
+            self.lock = threading.Lock()
+        else:
+            self.lock = None
         
 
     def send_command(self, command):
@@ -39,8 +49,10 @@ class ESP300Controller:
         command : str
             The command string to be sent to the controller.
         """
+        if self.lock is not None: self.lock.acquire()
         full_command = f"{command}\r"
         self.serial.write(full_command.encode())
+        if self.lock is not None: self.lock.release()
 
     def read_response(self, command):
         """
@@ -58,8 +70,11 @@ class ESP300Controller:
             The response from the controller.
         """
         full_command = f"{command}\r"
+        if self.lock is not None: self.lock.acquire()
         self.serial.write(full_command.encode())
-        return self.serial.readline().decode().strip()
+        reply = self.serial.readline().decode().strip()
+        if self.lock is not None: self.lock.release()
+        return reply
     
     
     def get_id(self, axis):

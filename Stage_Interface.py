@@ -130,7 +130,7 @@ class StageControllerApp():
             return
         
         try:
-            self.stage = esp300.ESP300Controller(selected_port)
+            self.stage = esp300.ESP300Controller(selected_port, create_lock=True)
             self.stage.turn_motor_on(self.motor_number)
             if self.parent:
                 self.parent.stage = self.stage
