@@ -12,6 +12,7 @@ import time
 from datetime import datetime
 import h5py
 import os
+
 import Stage_Interface
  
 class SpectrometerApp:
@@ -24,6 +25,7 @@ class SpectrometerApp:
         
         # Initialize Ocean Optics spectrometer
         try:
+            #raise ValueError('lol')
             self.devices = sb.list_devices()
             if not self.devices:
                 raise ValueError("No Ocean Optics spectrometer found.")
@@ -453,7 +455,12 @@ class SpectrometerApp:
         for p, position in enumerate(self.stage_steps):
             self.scan_step_number_label.config(text=f"step {p}/{n_steps}" ,foreground="red")
             self.stage.move_absolute(self.motor_number, str(position))
-            while self.stage.get_motion_status(self.motor_number):
+            while True:
+                try:
+                    if self.stage.get_motion_status(self.motor_number) is False:
+                        break
+                except Exception as e:
+                    print(f"Exception in checking motion status: {str(e)}")
                 time.sleep(0.05)
             time.sleep(0.2) # wait 200ms after stop before acquiring spectrum
             self.request_frog_spectrum.set()
