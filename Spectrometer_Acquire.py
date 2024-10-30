@@ -25,7 +25,7 @@ class SpectrometerApp:
         
         # Initialize Ocean Optics spectrometer
         try:
-            #raise ValueError('lol')
+            #raise ValueError('lol')    #TODO: Implement a better way to switch between spectrometers
             self.devices = sb.list_devices()
             if not self.devices:
                 raise ValueError("No Ocean Optics spectrometer found.")
@@ -420,9 +420,6 @@ class SpectrometerApp:
     def frog_interface(self):
         if self.acquiring:
             self.toggle_acquisition()
-        self.acquired_spectra = []  # Reset acquired spectra list
-        self.timestamps = []
-        self.stage_values = []
         self.filepath_var.set('frog_scan.h5')
         self.scan_frame.pack(fill=tk.X)
         self.frog_mode = True
@@ -442,6 +439,9 @@ class SpectrometerApp:
         self.scan_step_number_label.config(text=(str(len(self.stage_steps))+' Steps'))
     
     def start_frog_scan(self):
+        self.acquired_spectra = []  # Reset acquired spectra list
+        self.timestamps = []
+        self.stage_values = []
         print('Performing FROG scan...')
         self.acquire_button.config(state="disabled")
         self.acquiring_label.config(text="Acquiring FROG scan")
