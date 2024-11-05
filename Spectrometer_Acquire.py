@@ -435,6 +435,8 @@ class SpectrometerApp:
         start = float(self.scan_start_var.get())
         stop = float(self.scan_stop_var.get())
         step = float(self.scan_step_var.get())
+        if start > stop:  # for reverse scans
+            step=-step
         self.stage_steps = np.arange(start, stop, step)
         self.scan_step_number_label.config(text=(str(len(self.stage_steps))+' Steps'))
     
