@@ -27,6 +27,7 @@ class StageControllerApp():
         home_frame = tk.Frame(self.root)
         move_frame = tk.Frame(self.root)
         errorcode_frame = tk.Frame(self.root)
+        settings_frame = tk.Frame(self.root)   # TODO: If this gets bulkier hide it in a menu (?)
         
         # COM Port Selection Dropdown (label on the left)
         self.com_label = tk.Label(com_frame, text="Select COM Port:")
@@ -92,6 +93,22 @@ class StageControllerApp():
         
         errorcode_frame.pack(pady=5)
       
+        # Velocity control
+        self.velocity_label = tk.Label(settings_frame, text="Velocity:")
+        self.velocity_label.pack(side="left", padx=5)
+        
+        self.velocity_entry_text = tk.StringVar()
+        self.velocity_entry = tk.Entry(settings_frame, width=10, textvariable=self.velocity_entry_text)
+        self.velocity_entry.pack(side="left", padx=5)
+        self.velocity_entry.bind("<Return>", lambda event: self.set_target_velocity())
+        
+        self.velocity_get_button = tk.Button(settings_frame, text="Get",state="disabled",command=self.get_target_velocity)
+        self.velocity_get_button.pack(side="left", padx=5)
+        
+        self.velocity_set_button = tk.Button(settings_frame, text="Set",state="disabled",command=self.set_target_velocity)
+        self.velocity_set_button.pack(side="left", padx=5)
+        
+        settings_frame.pack()
         
         # Status label to display feedback
         self.status_label = tk.Label(self.root, text="", fg="blue")
@@ -108,6 +125,8 @@ class StageControllerApp():
             self.disconnect_button.config(state="normal")
             self.home_button.config(state="normal")
             self.move_button.config(state="normal")
+            self.velocity_get_button.config(state="normal")
+            self.velocity_set_button.config(state="normal")
             self.errorcode_button.config(state="normal")
             self.motor_spinbox.config(state="disabled")
         
@@ -141,6 +160,8 @@ class StageControllerApp():
             self.disconnect_button.config(state="normal")
             self.home_button.config(state="normal")
             self.move_button.config(state="normal")
+            self.velocity_get_button.config(state="normal")
+            self.velocity_set_button.config(state="normal")
             self.errorcode_button.config(state="normal")
             self.motor_spinbox.config(state="disabled")
             
@@ -171,6 +192,8 @@ class StageControllerApp():
             self.disconnect_button.config(state="disabled")
             self.home_button.config(state="disabled")
             self.move_button.config(state="disabled")
+            self.velocity_get_button.config(state="disabled")
+            self.velocity_set_button.config(state="disabled")
             self.status_label.config(text="Disconnected from stage", fg="red")
             self.position_label.config(text="Current Position: N/A", fg="blue")  # Reset position display
             self.errorcode_button.config(state="disabled")
@@ -224,6 +247,23 @@ class StageControllerApp():
             self.errorcode_label.config(text='No error detected :)', fg='green')
         else:
             self.errorcode_label.config(text=error[2], fg='red')
+    
+    def get_target_velocity(self):
+        if self.stage:
+            velocity = self.stage.get_velocity(self.motor_number)
+            self.velocity_entry_text.set(str(velocity))
+    
+    def set_target_velocity(self):
+        """Set the desired target velocity."""
+        if self.stage:
+            try:
+                velocity = float(self.velocity_entry.get())
+                self.stage.set_velocity(self.motor_number, velocity)
+                self.status_label.config(text=f"Motor {self.motor_number} target velocity set to {velocity}", fg="blue")
+            except ValueError:
+                messagebox.showerror("Error", "Invalid velocity. Please enter a valid number.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to set velocity.\n{str(e)}")
     
     def close(self):
         """Cleanup and close the application."""

@@ -295,7 +295,7 @@ class ESP300Controller:
                 
     def get_motion_status(self, axis):
         """
-        Retrieves the current velocity of the specified axis.
+        Retrieves the motion status of the specified axis.
 
         Command: MD?
         
@@ -334,6 +334,24 @@ class ESP300Controller:
         self.send_command(f"{axis}VA{velocity}")
 
     def get_velocity(self, axis):
+        """
+        Retrieves the set velocity of the specified axis.
+
+        Command: VA?
+        
+        Parameters
+        ----------
+        axis : int
+            Axis number (1 to MAX AXES).
+        
+        Returns
+        -------
+        str
+            The current velocity of the axis.
+        """
+        return self.read_response(f"{axis}VA?")
+
+    def get_velocity_current(self, axis):
         """
         Retrieves the current velocity of the specified axis.
 
