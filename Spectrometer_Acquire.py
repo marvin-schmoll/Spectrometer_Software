@@ -48,6 +48,7 @@ class SpectrometerApp:
                 answer = messagebox.askquestion(title="No spectrometer found", message=q_string)
                 if answer == "yes":
                     self.spec_type = "DEMO"
+                    self.demo_integration_time = 100
                 else:
                     self.root.destroy()
                     return
@@ -324,7 +325,7 @@ class SpectrometerApp:
                 
                 if self.spec_type == "DEMO": # Output noise
                     wavelengths = self.wavelengths
-                    intensities = np.random.rand(1000)
+                    intensities = np.random.rand(1000) * self.demo_integration_time
                     
                 now = datetime.now()
                 timestamp = (now.hour * 3600 + now.minute * 60 + now.second + now.microsecond / 1e6)
@@ -377,6 +378,8 @@ class SpectrometerApp:
                 avs.AVS_StopMeasure(self.active_spec_handle)
                 avs.set_measure_params(self.active_spec_handle, new_time_ms, 1)
                 avs.AVS_Measure(self.active_spec_handle)
+            if self.spec_type == "DEMO":
+                self.demo_integration_time = new_time_ms
             print(f"Integration time set to {new_time_ms} ms")
         except ValueError as e:
             messagebox.showerror("Invalid Value", f"Invalid integration time value: {e}")
@@ -472,6 +475,7 @@ class SpectrometerApp:
         self.save_spectra()
         time.sleep(2)
         self.calculate_step_number()
+        self.acquiring_label.config(text="")
         self.acquire_button.config(state="enabled")
         return
 
