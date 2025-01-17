@@ -108,6 +108,9 @@ class SpectrometerApp:
         integration_frame = ttk.Frame(control_frame)
         integration_frame.pack(fill=tk.X, pady=5)
         
+        self.pause_button = ttk.Button(integration_frame, text="Pause", command=self.toggle_pause)
+        self.pause_button.pack(side=tk.LEFT, padx=5, pady=5)
+        
         self.integration_label = ttk.Label(integration_frame, text="Integration Time (ms):")
         self.integration_label.pack(side=tk.LEFT, padx=5)
         
@@ -196,6 +199,7 @@ class SpectrometerApp:
         self.clear_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         # Start the update loop
+        self.paused = False
         self.data_queue = queue.Queue()
         self.running_event = threading.Event()
         self.running_event.set()
@@ -313,6 +317,11 @@ class SpectrometerApp:
     def spectrum_update_loop(self):
         while self.running_event.is_set():
             try:
+                # Pause loop if needed
+                if self.paused:
+                    time.sleep(0.1)  # Wait briefly before checking again
+                    continue
+                
                 if self.spec_type == "OCEAN_OPTICS": # Read spectrum of Ocean Optics
                     spectrum = self.spectrometer.spectrum()
                     wavelengths = spectrum[0]
@@ -383,6 +392,17 @@ class SpectrometerApp:
             print(f"Integration time set to {new_time_ms} ms")
         except ValueError as e:
             messagebox.showerror("Invalid Value", f"Invalid integration time value: {e}")
+    
+    def toggle_pause(self):
+        if self.paused:
+            self.paused = False
+            self.pause_button.config(text="Pause")
+            print("Spectrum acquisition resumed.")
+        else:
+            self.paused = True
+            self.pause_button.config(text="Restart")
+            print("Spectrum acquisition paused.")
+
 
     def toggle_acquisition(self):
         if self.acquiring:
