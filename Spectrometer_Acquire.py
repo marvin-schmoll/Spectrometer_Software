@@ -123,7 +123,7 @@ class SpectrometerApp:
         self.filepath_frame = ttk.Frame(control_frame)
         self.filepath_frame.pack(fill=tk.X, pady=5)
         
-        self.filepath_label = ttk.Label(self.filepath_frame, text="Save Filepath:")
+        self.filepath_label = ttk.Label(self.filepath_frame, text="Acquisition Filepath:")
         self.filepath_label.pack(side=tk.LEFT, padx=5)
         
         self.filepath_var = tk.StringVar(value="spectra.h5")
@@ -171,6 +171,9 @@ class SpectrometerApp:
         # Acquisition control
         acquisition_frame = ttk.Frame(control_frame)
         acquisition_frame.pack(fill=tk.X, pady=5)
+        
+        self.save_button = ttk.Button(acquisition_frame, text="Save", command=self.save_current_spectrum)
+        self.save_button.pack(side=tk.LEFT, padx=5, pady=5)
         
         self.acquire_button = ttk.Button(acquisition_frame, text="Start acquire", command=self.toggle_acquisition)
         self.acquire_button.pack(side=tk.LEFT, padx=5, pady=5)
@@ -433,6 +436,28 @@ class SpectrometerApp:
             print(f"Data saved to {file_path}")
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save data: {e}")
+    
+    def save_current_spectrum(self):
+        '''Open a savefile dialogue to save the current spectrum'''
+        file_path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+        if not file_path:
+            return  # User canceled the save dialog
+
+        try:
+            wavelengths = self.line.get_xdata()
+            intensities = self.line.get_ydata()
+
+            with open(file_path, "w") as f:
+                f.write("Wavelength [nm]\tIntensity\n")
+                for wl, inten in zip(wavelengths, intensities):
+                    f.write(f"{wl}\t{inten}\n")
+
+            print(f"Spectrum saved to {file_path}")
+            messagebox.showinfo("Save Successful", f"Spectrum saved to {file_path}")
+        except Exception as e:
+            print(f"Error saving spectrum: {e}")
+            messagebox.showerror("Save Error", f"An error occurred while saving the spectrum: {e}")
+        pass # TODO!
 
     def browse_file(self):
         '''Open a file dialog to select a file path'''
